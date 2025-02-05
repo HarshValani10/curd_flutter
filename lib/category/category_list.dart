@@ -128,7 +128,7 @@ class _CategoryListState extends State<CategoryList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Category List"),
+        title: const Text("Category List mnvmnnfbvkn "),
         leading: IconButton(onPressed: (){
           Navigator.pop(context);
 
