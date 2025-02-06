@@ -91,7 +91,7 @@ class _CategoryAddState extends State<CategoryAdd> {
     }
 
     return Scaffold(
-    appBar: AppBar(title: Text("Category Add"),),
+    appBar: AppBar(title: Text(widget.category == null ? "Category Add" : "Category Edit"),),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Form(

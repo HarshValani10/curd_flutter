@@ -128,7 +128,7 @@ class _CategoryListState extends State<CategoryList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Category List mnvmnnfbvkn "),
+        title: const Text("Category List"),
         leading: IconButton(onPressed: (){
           Navigator.pop(context);
 
@@ -170,7 +170,7 @@ class _CategoryListState extends State<CategoryList> {
                   ],
                   child: GestureDetector(
                     onTap: (){
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList(categoryID: category.id)));
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing

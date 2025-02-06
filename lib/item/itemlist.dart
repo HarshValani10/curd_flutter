@@ -1,17 +1,125 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
-
+import 'package:pro1/model/itemmodel.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../util/customButton.dart';
 import 'itemadd.dart';
 
 class ItemList extends StatefulWidget {
-  const ItemList({super.key});
+  final String categoryID;
+  const ItemList({super.key,required this.categoryID});
 
   @override
   State<ItemList> createState() => _ItemListState();
 }
 
 class _ItemListState extends State<ItemList> {
+  bool isLoading = true;
+  List<ItemModel> itemList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getItems(); // Fetch categories on init
+  }
+
+  Future<void> getItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('id_token');
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Authentication token not found!")),
+      );
+      return;
+    }
+
+    final url = Uri.parse("http://localhost:8081/api/pro6/category/${widget.categoryID}/item");
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token', // Add the Bearer token
+        },
+      );
+
+      print("Response Body: ${response.body}"); // Debugging: Print API response
+
+      if (response.statusCode == 200) {
+        try {
+          final List<dynamic> data = jsonDecode(response.body);
+          setState(() {
+            itemList =
+                data.map((json) => ItemModel.fromJson(json)).toList();
+            isLoading = false;
+          });
+        } catch (e) {
+          print("JSON Parsing Error: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error parsing JSON")),
+          );
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to load categories: ${response.statusCode}")),
+        );
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
+
+  Future<void> deleteCategory(String itemId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('id_token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Authentication token not found!")),
+      );
+      return;
+    }
+
+    final url = Uri.parse("http://localhost:8081/api/pro6/item/$itemId");
+
+    try {
+      final response = await http.delete(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Item deleted successfully")),
+        );
+        getItems();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete Item: ${response.statusCode}")),
+        );
+      }
+    } catch (e) {
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,32 +130,40 @@ class _ItemListState extends State<ItemList> {
 
         }, icon: Icon(Icons.arrow_back_ios_new_outlined)),
       ),
-      body: Column(
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Expanded(
             child: ListView.builder(
-              itemCount: 15,
+              itemCount: itemList.length,
               itemBuilder: (BuildContext context, int index) {
+                final items = itemList[index];
                 return SwipeActionCell(
                   key: ValueKey(index),
                   trailingActions: [
                     SwipeAction(
                         icon: Icon(Icons.edit, color: Colors.blue),
                         onTap: (handler) async {
+                           final result = await Navigator.push(context, MaterialPageRoute(builder: (context)=> ItemAdd(item: items,categoryID: items.id,)));
+
+                          if (result == true) {
+                            getItems(); // Refresh the list after editing
+                           }
                         },
                         color: Colors.transparent
                     ),
                     SwipeAction(
                         icon: Icon(Icons.delete, color: Colors.red),
                         onTap: (handler) async {
-                          _showDeleteDialog(context);
+                          _showDeleteDialog(context,items.id);
                         },
                         color: Colors.transparent
                     )
                   ],
                   child: GestureDetector(
                     onTap: (){
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList()));
+                      // Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList()));
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing
@@ -67,9 +183,11 @@ class _ItemListState extends State<ItemList> {
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5), // Padding inside the item
                         leading: const Icon(Icons.list),
-                        title: Text("List item $index"),
+                        title: Text(items.name.toString()),
+                        subtitle: Text(items.price.toString()),
                       ),
                     ),
+
                   ),
                 );
               },
@@ -77,8 +195,12 @@ class _ItemListState extends State<ItemList> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: (){
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ItemAdd()));
+      floatingActionButton: FloatingActionButton(onPressed: ()async{
+        final result = await Navigator.push(
+            context, MaterialPageRoute(builder: (context) => ItemAdd(categoryID: widget.categoryID)));
+        if (result == true) {
+          getItems(); // Refresh list after adding category
+        }
       },
         child: Icon(Icons.add),),
 
@@ -86,7 +208,7 @@ class _ItemListState extends State<ItemList> {
 
   }
   // Function to show the confirmation dialog
-  void _showDeleteDialog(BuildContext context) {
+  void _showDeleteDialog(BuildContext context,String itemId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -98,6 +220,7 @@ class _ItemListState extends State<ItemList> {
               Navigator.pop(context);
             },),
             CustomButton(text: "Delete", onPressed: () {
+              deleteCategory(itemId);
               Navigator.pop(context);
             },),
           ],
