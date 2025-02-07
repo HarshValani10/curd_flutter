@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:pro1/model/itemmodel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../util/apputils.dart';
 import '../util/customButton.dart';
 import 'itemadd.dart';
 
@@ -19,20 +21,23 @@ class ItemList extends StatefulWidget {
 class _ItemListState extends State<ItemList> {
   bool isLoading = true;
   List<ItemModel> itemList = [];
+  bool hasFetchedData = false;
 
   @override
-  void initState() {
-    super.initState();
-    getItems(); // Fetch categories on init
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!hasFetchedData) { // Ensure API call runs only once
+      hasFetchedData = true;
+      getItems();
+    }
   }
 
   Future<void> getItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('id_token');
+    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+    final token = store.state; // Get the token
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Authentication token not found!")),
-      );
+      showCustomSnackbar(context, "Authentication token not found!",isError: true);
       return;
     }
 
@@ -59,35 +64,27 @@ class _ItemListState extends State<ItemList> {
           });
         } catch (e) {
           print("JSON Parsing Error: $e");
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error parsing JSON")),
-          );
+          showCustomSnackbar(context, "rror parsing JSON",isError: true);
         }
       } else {
         setState(() {
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to load categories: ${response.statusCode}")),
-        );
+        showCustomSnackbar(context, "Failed to load categories",isError: true);
       }
     } catch (e) {
       setState(() => isLoading = false);
       print("Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      showCustomSnackbar(context, "Error",isError: true);
     }
   }
 
   Future<void> deleteCategory(String itemId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('id_token');
+    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+    final token = store.state; // Get the token
 
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Authentication token not found!")),
-      );
+      showCustomSnackbar(context, "Authentication token not found!",isError: true);
       return;
     }
 
@@ -103,20 +100,14 @@ class _ItemListState extends State<ItemList> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Item deleted successfully")),
-        );
+        showCustomSnackbar(context, "Item deleted successfully");
         getItems();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to delete Item: ${response.statusCode}")),
-        );
+        showCustomSnackbar(context, "Failed to delete Item:",isError: true);
       }
     } catch (e) {
       print("Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      showCustomSnackbar(context, "Error",isError: true);
     }
   }
 
@@ -146,7 +137,7 @@ class _ItemListState extends State<ItemList> {
                         icon: Icon(Icons.edit, color: Colors.blue),
                         onTap: (handler) async {
                            final result = await Navigator.push(context, MaterialPageRoute(builder: (context)=> ItemAdd(item: items,categoryID: items.id,)));
-
+                           await handler(false);
                           if (result == true) {
                             getItems(); // Refresh the list after editing
                            }
@@ -165,27 +156,46 @@ class _ItemListState extends State<ItemList> {
                     onTap: (){
                       // Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList()));
                     },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1.5), // Border for each item
-                        borderRadius: BorderRadius.circular(10), // Rounded corners
-                        color: Colors.white, // Background color
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2), // Shadow effect
-                            blurRadius: 4,
-                            spreadRadius: 1,
-                            offset: Offset(0, 2), // Shadow direction
+                    child: Stack(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey, width: 1.5), // Border for each item
+                            borderRadius: BorderRadius.circular(10), // Rounded corners
+                            color: Colors.white, // Background color
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2), // Shadow effect
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                                offset: Offset(0, 2), // Shadow direction
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5), // Padding inside the item
-                        leading: const Icon(Icons.list),
-                        title: Text(items.name.toString()),
-                        subtitle: Text(items.price.toString()),
-                      ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 15), // Padding inside the item
+                            leading: const Icon(Icons.list),
+                            title: Text(items.name.toString()),
+                            subtitle: Text(items.price.toString()),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          bottom: 8,
+                          right: 11,
+                          child: Container(
+                            width: 5, // Line width
+                            decoration: BoxDecoration(
+                              color: Colors.blue, // Line color
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(20),
+                                bottomRight: Radius.circular(20),
+                              ),// Rounded edges
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
 
                   ),

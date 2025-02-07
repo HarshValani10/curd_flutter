@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:pro1/model/categorymodel.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import '../util/apputils.dart';
 
 
 class CategoryAdd extends StatefulWidget {
@@ -34,8 +36,8 @@ class _CategoryAddState extends State<CategoryAdd> {
   @override
   Widget build(BuildContext context) {
     Future<void> categoryAdd() async {
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('id_token');
+      final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+      final token = store.state; // Get the token
 
       if (widget.category != null) {
         print("Editing category with ID: ${widget.category!.id}");
@@ -69,16 +71,12 @@ class _CategoryAddState extends State<CategoryAdd> {
       print("Response Body: ${response.body}"); // Print full response body
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.category == null ? "Category Created" : "Category Updated")),
-        );
+        showCustomSnackbar(context, widget.category == null ? "Category Created" : "Category Updated");
         Navigator.pop(context, true); // Return to refresh list
       } else {
         final errorData = jsonDecode(response.body);
         print("Error: ${errorData}"); // Print error for debugging
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Operation Failed: ${errorData['error']}")),
-        );
+        showCustomSnackbar(context, "Error",isError: true);
       }
     }
 
@@ -98,7 +96,12 @@ class _CategoryAddState extends State<CategoryAdd> {
           key: formKey,
           child: Column(
             children: [
-              CustomTextField(controller: nameController, labelText: "Enter Name"),
+              CustomTextField(controller: nameController, labelText: "Enter Name",validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Name is require";
+                }
+                return null;
+              },),
               SizedBox(height: 20,),
               CustomTextField(controller: descriptionController, labelText: "Enter Description"),
               SizedBox(height: 20,),

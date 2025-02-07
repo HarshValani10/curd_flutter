@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:pro1/model/itemmodel.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../util/apputils.dart';
 
 class ItemAdd extends StatefulWidget {
   final ItemModel? item;
@@ -33,8 +36,8 @@ class _ItemAddState extends State<ItemAdd> {
   Widget build(BuildContext context) {
 
     Future<void> itemAdd() async {
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('id_token');
+      final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+      final token = store.state; // Get the token
 
       if (widget.item != null) {
         print("Editing item with ID: ${widget.item!.id}");
@@ -68,16 +71,12 @@ class _ItemAddState extends State<ItemAdd> {
       print("Response Body: ${response.body}"); // Print full response body
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.item == null ? "Item Created" : "Item Updated")),
-        );
+        showCustomSnackbar(context, widget.item == null ? "Item Created" : "Item Updated");
         Navigator.pop(context, true); // Return to refresh list
       } else {
         final errorData = jsonDecode(response.body);
         print("Error: ${errorData}"); // Print error for debugging
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Operation Failed: ${errorData['error']}")),
-        );
+        showCustomSnackbar(context, "Error",isError: true);
       }
     }
 
@@ -94,9 +93,19 @@ class _ItemAddState extends State<ItemAdd> {
           key: formKey,
           child: Column(
             children: [
-              CustomTextField(controller: nameController, labelText: "Enter Name"),
+              CustomTextField(controller: nameController, labelText: "Enter Name",validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Name is require";
+                }
+                return null;
+              }),
               SizedBox(height: 20,),
-              CustomTextField(controller: priceController, labelText: "Enter Price"),
+              CustomTextField(controller: priceController, labelText: "Enter Price",validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Price is require";
+                }
+                return null;
+              }),
               SizedBox(height: 20,),
               CustomButton(text: "Save", onPressed: (){
                 onSubmit();

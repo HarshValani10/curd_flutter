@@ -1,12 +1,14 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:pro1/dashboard/dashboard.dart';
 import 'package:pro1/model/usermodel.dart';
+import 'package:pro1/redux/action/auth_action.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../util/apputils.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -42,17 +44,15 @@ class _LoginState extends State<Login> {
       if (response.statusCode == 200) {
         // Convert response to UserModel
         final user = UserModel.fromJsonString(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Login Successful"),
-            behavior: SnackBarBehavior.floating, // Makes it float
-            margin: EdgeInsets.only(top: 10, left: 20, right: 20), // Adjust position
-          ),
-        );
+        showCustomSnackbar(context, "Login successfully!");
         print("Login Successful: Token = ${user.idToken}");
 
-        // Store token in SharedPreferences for future use
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("id_token", user.idToken);
+        // // Store token in SharedPreferences for future use
+        // final prefs = await SharedPreferences.getInstance();
+        // await prefs.setString("id_token", user.idToken);
+
+        // Dispatch action to Redux store
+        StoreProvider.of<String>(context).dispatch(SetAuthToken(user.idToken));
 
         // Navigate to Dashboard
         Navigator.of(context).pushReplacement(
@@ -62,10 +62,7 @@ class _LoginState extends State<Login> {
         final errorData = jsonDecode(response.body);
         print("Login Failed: ${errorData['error']}");
 
-        // Show an error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Login Failed: ${errorData['error']}")),
-        );
+       showCustomSnackbar(context, "Login Failed",isError: true);
       }
     }
 
@@ -74,9 +71,6 @@ class _LoginState extends State<Login> {
         login();
       }
     }
-
-
-
     return Scaffold(
       appBar: AppBar(
         title: Text("Login",style: TextStyle(fontSize: 20),),
@@ -91,10 +85,6 @@ class _LoginState extends State<Login> {
                 if (value == null || value.isEmpty) {
                   return "UserName is require";
                 }
-                // else if (!RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+")
-                //     .hasMatch(value)) {
-                //   return "Enter a valid email";
-                // }
                 return null;
               },
               ),
