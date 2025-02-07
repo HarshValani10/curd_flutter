@@ -1,12 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:pro1/category/category_add.dart';
 import 'package:pro1/item/itemlist.dart';
 import 'package:pro1/model/categorymodel.dart';
-import 'package:pro1/util/apputils.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,29 +18,16 @@ class CategoryList extends StatefulWidget {
 }
 
 class _CategoryListState extends State<CategoryList> {
-
-  bool hasFetchedData = false;
   bool isLoading = true;
   List<CategoryModel> categoryList = [];
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (!hasFetchedData) { // Ensure API call runs only once
-      hasFetchedData = true;
-      getCategories();
-    }
-  }
-
   Future<void> getCategories() async {
-    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
-    final token = store.state; // Get the token
-
-    print("Token Retrieved: $token"); // Log the token
-
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('id_token');
     if (token == null) {
-      showCustomSnackbar(context, "Authentication token not found!", isError: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Authentication token not found!")),
+      );
       return;
     }
 
@@ -68,31 +53,36 @@ class _CategoryListState extends State<CategoryList> {
             isLoading = false;
           });
         } catch (e) {
-          showCustomSnackbar(context, "Error parsing JSON",isError: true);
           print("JSON Parsing Error: $e");
-
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error parsing JSON")),
+          );
         }
       } else {
         setState(() {
           isLoading = false;
         });
-        showCustomSnackbar(context, "Failed to load categories",isError: true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to load categories: ${response.statusCode}")),
+        );
       }
     } catch (e) {
       setState(() => isLoading = false);
       print("Error: $e");
-
-      showCustomSnackbar(context, "Error",isError: true);
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     }
   }
 
   Future<void> deleteCategory(String categoryId) async {
-    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
-    final token = store.state; // Get the token
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('id_token');
 
     if (token == null) {
-      showCustomSnackbar(context, "Authentication token not found!",isError: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Authentication token not found!")),
+      );
       return;
     }
 
@@ -108,16 +98,32 @@ class _CategoryListState extends State<CategoryList> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        showCustomSnackbar(context, "Category delete Succesfully!");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Category deleted successfully")),
+        );
         getCategories(); // Refresh list after deletion
       } else {
-        showCustomSnackbar(context, "Failed to delete category!",isError: true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete category: ${response.statusCode}")),
+        );
       }
     } catch (e) {
       print("Error: $e");
-      showCustomSnackbar(context, "Error",isError: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
     }
   }
+
+
+
+
+  @override
+  void initState() {
+    super.initState();
+    getCategories(); // Fetch categories on init
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,12 +149,10 @@ class _CategoryListState extends State<CategoryList> {
                     SwipeAction(
                       icon: Icon(Icons.edit, color: Colors.blue),
                       onTap: (handler) async {
-
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => CategoryAdd(category: category)),
                         );
-                        await handler(false);
                         if (result == true) {
                           getCategories(); // Refresh the list after editing
                         }
@@ -160,9 +164,7 @@ class _CategoryListState extends State<CategoryList> {
                       icon: Icon(Icons.delete, color: Colors.red),
                       onTap: (handler) async {
                         _showDeleteDialog(context, category.id);
-                        await handler(false);
                       },
-
                         color: Colors.transparent
                     )
                   ],
@@ -170,46 +172,27 @@ class _CategoryListState extends State<CategoryList> {
                     onTap: (){
                       Navigator.push(context, MaterialPageRoute(builder: (context) => ItemList(categoryID: category.id)));
                     },
-                    child: Stack(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey, width: 1.5), // Border for each item
-                            borderRadius: BorderRadius.circular(10), // Rounded corners
-                            color: Colors.white, // Background color
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2), // Shadow effect
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                                offset: Offset(0, 2), // Shadow direction
-                              ),
-                            ],
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Add margin for spacing
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey, width: 1.5), // Border for each item
+                        borderRadius: BorderRadius.circular(10), // Rounded corners
+                        color: Colors.white, // Background color
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2), // Shadow effect
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                            offset: Offset(0, 2), // Shadow direction
                           ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 15), // Padding inside the item
-                            leading: const Icon(Icons.list),
-                            title: Text(category.name),
-                            subtitle: Text(category.description),
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          bottom: 8,
-                          right: 11,
-                          child: Container(
-                            width: 5, // Line width
-                            decoration: BoxDecoration(
-                              color: Colors.blue, // Line color
-                                    borderRadius: const BorderRadius.only(
-                                      topRight: Radius.circular(20),
-                                      bottomRight: Radius.circular(20),
-                                    ),// Rounded edges
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5), // Padding inside the item
+                        leading: const Icon(Icons.list),
+                        title: Text(category.name),
+                        subtitle: Text(category.description),
+                      ),
                     ),
                   ),
                 );
