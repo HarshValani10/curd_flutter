@@ -7,7 +7,6 @@ import 'package:pro1/redux/action/auth_action.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../util/apputils.dart';
 
 class Login extends StatefulWidget {

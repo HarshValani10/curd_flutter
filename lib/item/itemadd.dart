@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:pro1/model/itemmodel.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../util/apputils.dart';
 

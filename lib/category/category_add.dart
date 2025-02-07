@@ -5,7 +5,6 @@ import 'package:flutter_redux/flutter_redux.dart';
 import 'package:pro1/model/categorymodel.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:pro1/util/customtextfild.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../util/apputils.dart';
 

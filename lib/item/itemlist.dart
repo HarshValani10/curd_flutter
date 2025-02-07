@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:pro1/model/itemmodel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../util/apputils.dart';
 import '../util/customButton.dart';

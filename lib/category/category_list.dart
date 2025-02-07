@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:pro1/category/category_add.dart';
 import 'package:pro1/item/itemlist.dart';
 import 'package:pro1/model/categorymodel.dart';
 import 'package:pro1/util/customButton.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 
 class CategoryList extends StatefulWidget {
@@ -22,8 +22,9 @@ class _CategoryListState extends State<CategoryList> {
   List<CategoryModel> categoryList = [];
 
   Future<void> getCategories() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('id_token');
+    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+    final token = store.state; // Get the token
+
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Authentication token not found!")),
@@ -76,8 +77,8 @@ class _CategoryListState extends State<CategoryList> {
   }
 
   Future<void> deleteCategory(String categoryId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('id_token');
+    final store = StoreProvider.of<String>(context, listen: false); // Retrieve Redux state
+    final token = store.state; // Get the token
 
     if (token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
