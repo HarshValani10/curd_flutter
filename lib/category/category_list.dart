@@ -70,7 +70,7 @@ class _CategoryListState extends State<CategoryList> {
       setState(() => isLoading = false);
       print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
+        SnackBar(content: Text("Errcxcdxvcor: $e")),
       );
     }
   }
